@@ -1,7 +1,7 @@
 bl_info = {
 	"name": "VF Save Version",
 	"author": "John Einselen - Vectorform LLC",
-	"version": (0, 0, 2),
+	"version": (0, 0, 3),
 	"blender": (3, 6, 0),
 	"location": "Top bar > File > Save Version",
 	"description": "Saves a versioned file to the specified archive location",
@@ -25,7 +25,7 @@ from re import match, findall, M as multiline
 class VF_OT_SaveVersion(bpy.types.Operator):
 	bl_idname = "wm.saveversion"
 	bl_label = "Save Version"
-	bl_description = "Save a versioned file in the defined directory"
+	bl_description = "Save a versioned file in the specified directory"
 	bl_space_type = "TOPBAR"
 	bl_region_type = 'UI'
 	
@@ -46,7 +46,7 @@ class VF_OT_SaveVersion(bpy.types.Operator):
 		
 		if len(version_path) <= 1:
 			# Replace one or fewer characters with the project path
-			version_path = os.path.join(os.path.dirname(bpy.data.filepath), projectname)
+			version_path = os.path.join(os.path.dirname(bpy.data.filepath), project_name)
 		
 		# Convert relative path into absolute path for Python compatibility
 		project_path = bpy.path.abspath(project_path)
@@ -61,7 +61,7 @@ class VF_OT_SaveVersion(bpy.types.Operator):
 		
 		# Generate file name with identifier
 		if version_type == 'SERIAL': # Generate dynamic serial number
-			# Finds all of the image files that start with projectname in the selected directory
+			# Finds all of the image files that start with project_name in the selected directory
 			files = [f for f in os.listdir(version_path) if f.startswith(project_name) and f.lower().endswith(".blend")]
 			
 			# Searches the file collection and returns the next highest number as a 4 digit string
