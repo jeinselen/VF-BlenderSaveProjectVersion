@@ -1,11 +1,10 @@
 bl_info = {
 	"name": "VF Save Version",
 	"author": "John Einselen - Vectorform LLC",
-	"version": (0, 0, 4),
+	"version": (0, 0, 5),
 	"blender": (3, 6, 0),
 	"location": "Top bar > File > Save Version",
-	"description": "Saves a versioned file to the specified archive location",
-	"warning": "inexperienced developer, use at your own risk",
+	"description": "Saves a versioned project file to the specified directory",
 	"doc_url": "https://github.com/jeinselen/VF-BlenderSaveVersion",
 	"tracker_url": "https://github.com/jeinselen/VF-BlenderSaveVersion/issues",
 	"category": "Import-Export"}
@@ -83,24 +82,38 @@ class VF_OT_SaveVersion(bpy.types.Operator):
 			# Create string with date and time
 			version_name = '{project}{separator}{date}-{time}'
 		
+		# Convert variables (this allows for greater flexibility in the future)
+		version_name = version_name.replace("{project}", project_name)
+		version_name = version_name.replace("{separator}", bpy.context.preferences.addons['VF_saveVersion'].preferences.version_separator)
+		version_name = version_name.replace("{date}", datetime.datetime.now().strftime('%Y-%m-%d'))
+		version_name = version_name.replace("{time}", datetime.datetime.now().strftime('%H-%M-%S'))
+		
 		# Combine file path and file name using system separator
 		version_path = os.path.join(version_path, version_name)
-		
-		# Convert variables (this allows for greater flexibility in the future)
-		version_path = version_path.replace("{project}", project_name)
-		version_path = version_path.replace("{separator}", bpy.context.preferences.addons['VF_saveVersion'].preferences.version_separator)
-		version_path = version_path.replace("{date}", datetime.datetime.now().strftime('%Y-%m-%d'))
-		version_path = version_path.replace("{time}", datetime.datetime.now().strftime('%H-%M-%S'))
 		
 		# Add project extension
 		version_path += '.blend'
 		
 		# Save version
-		bpy.ops.wm.save_as_mainfile(filepath=version_path, compress=True, copy=True)
-#		bpy.ops.wm.save_as_mainfile(filepath=version_path, compress=True, relative_remap=True, copy=True)
+		bpy.ops.wm.save_as_mainfile(filepath=version_path, compress=True, relative_remap=True, copy=True)
+		
+		# Build display path to display success feedback
+		display_path = bpy.context.preferences.addons['VF_saveVersion'].preferences.version_path
+		if len(display_path) <= 1:
+			display_path = project_name
+		display_path = os.path.join(display_path, version_name + '.blend')
+		
+		# Provide success feedback
+		self.report ({'INFO'}, "Version saved successfully: " + display_path)
+		if bpy.context.preferences.addons['VF_saveVersion'].preferences.version_confirm:
+			def draw(self, context):
+				self.layout.label(text=display_path)
+			bpy.context.window_manager.popup_menu(draw, title="Version Saved Successfully", icon='FOLDER_REDIRECT') # Alt: INFO
 		
 		# Done
 		return {'FINISHED'}
+
+
 
 ###########################################################################
 # Global user preferences and UI rendering class
@@ -128,14 +141,23 @@ class VfSaveVersionPreferences(bpy.types.AddonPreferences):
 			('DATETIME', 'Date and Time', 'Save versions with the current date and time')
 			],
 		default='SERIAL')
+	version_confirm: bpy.props.BoolProperty(
+		name='Confirmation Popup',
+		description='Confirms successful version saving with a popup panel',
+		default=False)
 	
 	# User Interface
 	def draw(self, context):
 		layout = self.layout
+		layout.use_property_split = True
 		
-		layout.prop(self, "version_path")
-		layout.prop(self, "version_separator")
-		layout.prop(self, "version_type")
+		col = layout.column(align=True)
+		col.prop(self, "version_path")
+		col.prop(self, "version_separator")
+		col.prop(self, "version_type")
+		col.prop(self, "version_confirm")
+
+
 
 ###########################################################################
 # Menu UI
@@ -145,6 +167,8 @@ def TOPBAR_MT_file_save_version(self, context):
 	self.layout.separator()
 	self.layout.operator(VF_OT_SaveVersion.bl_idname, text = "Save Version", icon = "FOLDER_REDIRECT")
 	# FILE_NEW FILE_TICK FILE_BLEND FOLDER_REDIRECT
+
+
 
 ###########################################################################
 # Addon registration functions
