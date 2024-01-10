@@ -2,7 +2,11 @@
 
 Saves the current Blender project in a subfolder or other directory path with a serial number or date and time using compression and linked asset remapping. Helps keep the root project directory clean even an artist is obsessive about saving progress as separate versions.
 
-![screenshot of the successfully saved new version popup window in the Blender user interface](/images/banner.jpg)
+![screenshot of the successfully saved new version popup window in the Blender user interface](images/banner.jpg)
+
+
+
+
 
 
 
@@ -24,7 +28,11 @@ These can be customised in the Blender Keymap preferences or by right-clicking o
 
 
 
-### Preferences
+
+
+
+
+## Preferences
 
 - `Path` sets the location for versioned files
 	- `/` = a folder alongside the project using the project name
@@ -36,6 +44,10 @@ These can be customised in the Blender Keymap preferences or by right-clicking o
 - `Type ` switches between the available number options
 	- `Serial Number` = automatically incrementing version number based on previously saved versions in the specified path, starting at 0000
 	- `Date and Time` = current date and time using YYYY-MM-DD-HH-MM-SS format
+
+
+
+
 
 
 
