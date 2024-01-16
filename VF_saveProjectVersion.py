@@ -1,7 +1,7 @@
 bl_info = {
 	"name": "VF Save Project Version",
 	"author": "John Einselen - Vectorform LLC",
-	"version": (0, 1, 4),
+	"version": (0, 1, 5),
 	"blender": (3, 6, 0),
 	"location": "Top bar > File > Save Version",
 	"description": "Saves a versioned project file to the specified directory",
@@ -196,10 +196,14 @@ class VfSaveProjectVersionPreferences(bpy.types.AddonPreferences):
 		
 		col = layout.column(align=True)
 		col.prop(self, "version_path")
+		
+		col = layout.column(align=True)
 		col.prop(self, "version_separator")
 		col.prop(self, "version_type")
 		if self.version_type != 'DATETIME':
 			col.prop(self, "version_format")
+		
+		col = layout.column(align=True)
 		col.prop(self, "version_confirm")
 
 
@@ -211,8 +215,10 @@ def TOPBAR_MT_file_save_version(self, context):
 	bl_idname = 'TOPBAR_MT_file_save_version'
 	self.layout.separator()
 	if bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_type == 'ALPHANUM':
-		self.layout.operator(VF_OT_SaveProjectVersion.bl_idname, text = "Save Minor Version", icon = "FOLDER_REDIRECT")
-		self.layout.operator(VF_OT_SaveProjectVersion.bl_idname, text = "Save Major Version", icon = "FOLDER_REDIRECT")
+		minor = self.layout.operator(VF_OT_SaveProjectVersion.bl_idname, text = "Save Minor Version", icon = "FOLDER_REDIRECT")
+		minor.increment_major = False
+		major = self.layout.operator(VF_OT_SaveProjectVersion.bl_idname, text = "Save Major Version", icon = "FOLDER_REDIRECT")
+		major.increment_major = True
 	else:
 		self.layout.operator(VF_OT_SaveProjectVersion.bl_idname, text = "Save Version", icon = "FOLDER_REDIRECT")
 	# FILE_NEW FILE_TICK FILE_BLEND FOLDER_REDIRECT
@@ -239,11 +245,13 @@ def register():
 		# Linux/Windows Increment/Increment Minor
 		km = wm.keyconfigs.addon.keymaps.new(name='Window')
 		kmi = km.keymap_items.new(VF_OT_SaveProjectVersion.bl_idname, 'S', 'PRESS', ctrl=True, alt=True, shift=True)
+		kmi.properties.increment_major = False
 		addon_keymaps.append((km, kmi))
 		
 		## MacOS Increment/Increment Minor
 		km = wm.keyconfigs.addon.keymaps.new(name='Window')
 		kmi = km.keymap_items.new(VF_OT_SaveProjectVersion.bl_idname, 'S', 'PRESS', oskey=True, alt=True, shift=True)
+		kmi.properties.increment_major = False
 		addon_keymaps.append((km, kmi))
 		
 		## MacOS Increment Major

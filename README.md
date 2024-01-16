@@ -44,11 +44,21 @@ These can be customised in the Blender Keymap preferences or by right-clicking o
 - `Type ` switches between the available number options
   - `Serial Number` = automatically incrementing version number based on previously saved versions in the specified path, starting at 0000
   - `Date and Time` = current date and time using YYYY-MM-DD-HH-MM-SS format
-  - `Alphanumeric` = major/minor versioning using number + character format (by default, `001a`, `001b`, `001c` ... `002a` etcetera)
+  - `Alphanumeric` = major/minor versioning in number + character format (`001a`, `001b`, `001c` ... `002a` etcetera)
 - `Digits` adjusts the zero padding for both `Serial Number` and `Alphanumeric` formats
 - `Confirmation Popup` enables a small confirmation panel with the version output path when the script completes (it will always display success in the status bar)
 
+
+
+
+
+
+
+## Alphanumeric Details
+
 The `Alphanumeric` type is unique; instead of saving a compressed copy with incremented version number, it saves the current project with a new alphanumeric serial and then moves the previous project file into the specified location. It will not automatically compress anything, instead relying on whatever compression setting the current project file is using.
+
+This approach is particularly necessary for users of [VF Autosave Render + Output Variables](https://github.com/jeinselen/VF-BlenderAutosaveRender). The `{project}` variable returns the current project name, so if an automatically named render needs to be associated with a specific project version (unrelated to the per-render serial number options in that plugin), the relevant version number needs to exist in the _active_ project name, not introducing serial numbers at the point of archival (though time stamps work, they're often not as readable, especially for tracking major/minor updates).
 
 If no alphanumeric code exists, the original file will be moved to the versions, and a code will be added to the active project starting at `1a` (using however many digits are specified in the preferences). New alphanumeric versions will follow existing naming conventions; if you manually save a file using `name+00003g.blend`, subsequent versions will also use a plus sign and the separator specified in the plugin preferences will be ignored, but the number of digits will be enforced.
 
