@@ -48,14 +48,17 @@ These can be customised in the Blender Keymap preferences or by right-clicking o
 - `Digits` adjusts the zero padding for both `Serial Number` and `Alphanumeric` formats
 - `Confirmation Popup` enables a small confirmation panel with the version output path when the script completes (it will always display success in the status bar)
 
-The `Alphanumeric` type is unique; instead of saving a compressed copy with incremented version number, it saves the current project with a new alphanumeric serial and then moves the previous project file into the specified location. It will not automatically compress anything, instead relying on whatever compression setting the project file is currently using.
+The `Alphanumeric` type is unique; instead of saving a compressed copy with incremented version number, it saves the current project with a new alphanumeric serial and then moves the previous project file into the specified location. It will not automatically compress anything, instead relying on whatever compression setting the current project file is using.
 
-It also has two options when saving a new version. When starting from `001c`, a minor version would be `001d` whereas a major version would be `002a`
+If no alphanumeric code exists, the original file will be moved to the versions, and a code will be added to the active project starting at `1a` (using however many digits are specified in the preferences). New alphanumeric versions will follow existing naming conventions; if you manually save a file using `name+00003g.blend`, subsequent versions will also use a plus sign and the separator specified in the plugin preferences will be ignored, but the number of digits will be enforced.
+
+There are two options when saving a new alphanumeric version; assuming a starting code of `001c`, a minor version will become `001d`, whereas a major version will become `002a`.
 
 The keyboard shortcut for a minor version increment is the same as other version types. The keyboard shortcut for a major version increment is tested in MacOS, but Linux and Windows systems may require manual customisation:
 
 - Command + Option + Control + Shift + S
 
+Note that if an alphanumeric file of the same name already exists when a new version is incremented, it will be replaced and renamed with a ".blend1" extension (assuming default Blender settings for backups). However, subsequent saving of the new versioned file will replace that backup with its own backup, and the original file will be lost. This isn't likely! But could happen if alphanumeric versions are manually changed or old versions are restored, then edited and iterated without checking if they're overwriting an existing version.
 
 
 

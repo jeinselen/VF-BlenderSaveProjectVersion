@@ -1,7 +1,7 @@
 bl_info = {
 	"name": "VF Save Project Version",
 	"author": "John Einselen - Vectorform LLC",
-	"version": (0, 1, 2),
+	"version": (0, 1, 4),
 	"blender": (3, 6, 0),
 	"location": "Top bar > File > Save Version",
 	"description": "Saves a versioned project file to the specified directory",
@@ -32,11 +32,14 @@ class VF_OT_SaveProjectVersion(bpy.types.Operator):
 	
 	def invoke(self, context, event):
 		# Get preferences
+		version_path = bpy.path.abspath(bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_path)
 		version_type = bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_type
 		version_format = format(bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_format, '02')
 		version_separator = bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_separator
 		
-		# Get current project path
+		
+		
+		# Define project paths
 		project_path = os.path.dirname(bpy.data.filepath)
 		
 		# If project hasn't been saved yet, open a save dialogue
@@ -45,37 +48,11 @@ class VF_OT_SaveProjectVersion(bpy.types.Operator):
 			bpy.ops.wm.save_mainfile('INVOKE_AREA')
 			return {'FINISHED'}
 		
-		# Get project name
-		project_name = os.path.splitext(os.path.basename(bpy.data.filepath))[0]
-		
-		# If set to alphanumeric, separate version elements from project name
-		if version_type == "ALPHANUM":
-			project_name_parts = split(r'([0-9]{3})([a-z]{1})$', project_name)
-			if len(project_name_parts) > 3:
-				project_name = project_name_parts[0]
-				# Increment values (major: "001x" to "002a", minor: "001a" to "001b")
-				if self.increment_major:
-					project_num = format(int(project_name_parts[1]) + 1, version_format)
-					project_chr = "a"
-				else:
-					project_num = project_name_parts[1]
-					project_chr = str(chr(ord(project_name_parts[2]) + 1))
-			else:
-				project_name = "{project}{separator}"
-				project_num = format(1, version_format)
-				project_chr = "a"
-		else:
-			project_num = False
-			project_chr = False
-		
-		# Get defined version path
-		version_path = bpy.path.abspath(bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_path)
-		
 		# If empty or single character, use a folder with the same name as the project file
 		if len(version_path) <= 1:
 			# Replace one or fewer characters with the project path
 			version_path = os.path.join(os.path.dirname(bpy.data.filepath), project_name)
-		
+			
 		# Convert relative paths into absolute paths for Python compatibility
 		project_path = bpy.path.abspath(project_path)
 		version_path = bpy.path.abspath(version_path)
@@ -84,7 +61,12 @@ class VF_OT_SaveProjectVersion(bpy.types.Operator):
 		if not os.path.exists(version_path):
 			os.makedirs(version_path)
 		
-		# Generate file name with identifier
+		
+		
+		# Define project names
+		project_name = os.path.splitext(os.path.basename(bpy.data.filepath))[0]
+		
+		# Generate file name with numerical identifier
 		if version_type == 'SERIAL': # Generate dynamic serial number
 			# Finds all project files that start with project_name in the selected directory
 			files = [f for f in os.listdir(version_path) if f.startswith(project_name) and f.lower().endswith(".blend")]
@@ -95,61 +77,59 @@ class VF_OT_SaveProjectVersion(bpy.types.Operator):
 				if files:
 					for f in files:
 						# find filenames that end with four or more digits
-						suffix = findall(r'\d{4,}$', os.path.splitext(f)[0].split(project_name)[-1], multiline)
+						suffix = findall(r'\d+$', os.path.splitext(f)[0].split(project_name)[-1], multiline)
 						if suffix:
 							if int(suffix[-1]) > highest:
 								highest = int(suffix[-1])
 				return format(highest + 1, version_format)
 		
 			# Create string with serial number
-			version_name = '{project}{separator}' + save_number_from_files(files)
+			version_name = project_name + version_separator + save_number_from_files(files)
 		
+		# Generate file name with date and time
 		elif version_type == 'DATETIME':
 			# Create string with date and time
-			version_name = '{project}{separator}{date}-{time}'
+			version_name = project_name + version_separator + datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
 		
+		# If set to alphanumeric, separate version elements from project name, increment, recombine
 		elif version_type == 'ALPHANUM':
-			# Create string with alphanumeric major/minor serial code
-			version_name = '{project}{num}{chr}'
+			project_name_parts = split(r'([0-9]{3})([a-z]{1})$', project_name)
+			# If project is already correctly versioned, increment
+			if len(project_name_parts) > 3:
+				# Increment values (major: "001x" to "002a", minor: "001a" to "001b")
+				if self.increment_major:
+					project_num = format(int(project_name_parts[1]) + 1, version_format)
+					project_chr = "a"
+				else:
+					project_num = project_name_parts[1]
+					project_chr = str(chr(ord(project_name_parts[2]) + 1))
+				version_name = project_name_parts[0] + project_num + project_chr
+			# If project wasn't versioned, create new version
+			else:
+				project_num = format(1, version_format)
+				project_chr = "a"
+				version_name = project_name + version_separator + project_num + project_chr
 		
-		# Convert variables (allows for greater flexibility in the future and potential reduction of redundant code)
-		def convert_variables(string):
-			string = string.replace("{project}", project_name)
-			string = string.replace("{separator}", version_separator)
-			string = string.replace("{date}", datetime.datetime.now().strftime('%Y-%m-%d'))
-			string = string.replace("{time}", datetime.datetime.now().strftime('%H-%M-%S'))
-			if project_num:
-				string = string.replace("{num}", project_num)
-			if project_chr:
-				string = string.replace("{chr}", project_chr)
-			return string
+		
 		
 		# Save version
-		if version_type == 'ALPHANUM':
+		if version_type != 'ALPHANUM':
+			# Combine file path and file name using system separator, add project extension
+			version_file = os.path.join(version_path, version_name) + '.blend'
+			bpy.ops.wm.save_as_mainfile(filepath=version_file, compress=True, relative_remap=True, copy=True)
+		else:
 			# Save current file with new serial number
-			project_path = os.path.join(project_path, version_name) + '.blend'
-			project_path = convert_variables(project_path)
-			bpy.ops.wm.save_as_mainfile(filepath=project_path, relative_remap=True)
+			project_file = os.path.join(project_path, version_name) + '.blend'
+			bpy.ops.wm.save_as_mainfile(filepath=project_file, relative_remap=True)
 			
 			# Move previous project file(s) to version directory
 			old_path = os.path.join(project_path, project_name) + '.blend'
-			old_path = convert_variables(old_path)
 			new_path = os.path.join(version_path, project_name) + '.blend'
-			new_path = convert_variables(new_path)
 			os.rename(old_path, new_path)
 			if os.path.isfile(old_path + '1'):
 				os.rename(old_path + '1', new_path + '1')
-			
-			# An alternative approach:
-			# save the current file as a copy into the version directory with current (old) name
-			# save the current project file with new file name in the project directory
-			# then remove the old project in the project directory
-			# ...downside is that removing a file could fail disastrously if the copy fails to save but the script continues to process, leaving the user with only their current project (or worse, the new project gets deleted and they close Blender!)
-		else:
-			# Combine file path and file name using system separator, add project extension
-			version_path = os.path.join(version_path, version_name) + '.blend'
-			version_path = convert_variables(version_path)
-			bpy.ops.wm.save_as_mainfile(filepath=version_path, compress=True, relative_remap=True, copy=True)
+		
+		
 		
 		# Build display path to display success feedback
 		display_path = bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_path
@@ -199,7 +179,11 @@ class VfSaveProjectVersionPreferences(bpy.types.AddonPreferences):
 	version_format: bpy.props.IntProperty(
 		name="Digits",
 		description="Number of serial number digits, padded with leading zeroes",
-		default=3)
+		default=4,
+		soft_min=1,
+		soft_max=8,
+		min=1,
+		max=8)
 	version_confirm: bpy.props.BoolProperty(
 		name='Confirmation Popup',
 		description='Confirms successful version saving with a popup panel',
