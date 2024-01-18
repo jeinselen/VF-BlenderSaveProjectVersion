@@ -1,7 +1,7 @@
 bl_info = {
 	"name": "VF Save Project Version",
 	"author": "John Einselen - Vectorform LLC",
-	"version": (0, 1, 5),
+	"version": (0, 1, 7),
 	"blender": (3, 6, 0),
 	"location": "Top bar > File > Save Version",
 	"description": "Saves a versioned project file to the specified directory",
@@ -34,8 +34,13 @@ class VF_OT_SaveProjectVersion(bpy.types.Operator):
 		# Get preferences
 		version_path = bpy.path.abspath(bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_path)
 		version_type = bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_type
-		version_format = format(bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_format, '02')
 		version_separator = bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_separator
+		if version_type == 'ALPHANUM':
+			version_length = format(bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_length - 1, '02')
+		else:
+			version_length = format(bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_length, '02')
+		version_compress = bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_compress
+		version_deletebackup = bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_deletebackup
 		
 		
 		
@@ -67,7 +72,7 @@ class VF_OT_SaveProjectVersion(bpy.types.Operator):
 		project_name = os.path.splitext(os.path.basename(bpy.data.filepath))[0]
 		
 		# Generate file name with numerical identifier
-		if version_type == 'SERIAL': # Generate dynamic serial number
+		if version_type == 'NUM': # Generate dynamic serial number
 			# Finds all project files that start with project_name in the selected directory
 			files = [f for f in os.listdir(version_path) if f.startswith(project_name) and f.lower().endswith(".blend")]
 			
@@ -81,13 +86,13 @@ class VF_OT_SaveProjectVersion(bpy.types.Operator):
 						if suffix:
 							if int(suffix[-1]) > highest:
 								highest = int(suffix[-1])
-				return format(highest + 1, version_format)
-		
+				return format(highest + 1, version_length)
+			
 			# Create string with serial number
 			version_name = project_name + version_separator + save_number_from_files(files)
 		
 		# Generate file name with date and time
-		elif version_type == 'DATETIME':
+		elif version_type == 'TIME':
 			# Create string with date and time
 			version_name = project_name + version_separator + datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
 		
@@ -98,7 +103,7 @@ class VF_OT_SaveProjectVersion(bpy.types.Operator):
 			if len(project_name_parts) > 3:
 				# Increment values (major: "001x" to "002a", minor: "001a" to "001b")
 				if self.increment_major:
-					project_num = format(int(project_name_parts[1]) + 1, version_format)
+					project_num = format(int(project_name_parts[1]) + 1, version_length)
 					project_chr = "a"
 				else:
 					project_num = project_name_parts[1]
@@ -106,7 +111,7 @@ class VF_OT_SaveProjectVersion(bpy.types.Operator):
 				version_name = project_name_parts[0] + project_num + project_chr
 			# If project wasn't versioned, create new version
 			else:
-				project_num = format(1, version_format)
+				project_num = format(1, version_length)
 				project_chr = "a"
 				version_name = project_name + version_separator + project_num + project_chr
 		
@@ -114,20 +119,29 @@ class VF_OT_SaveProjectVersion(bpy.types.Operator):
 		
 		# Save version
 		if version_type != 'ALPHANUM':
-			# Combine file path and file name using system separator, add project extension
+			# Save copy of current project with new name in the archive location
 			version_file = os.path.join(version_path, version_name) + '.blend'
-			bpy.ops.wm.save_as_mainfile(filepath=version_file, compress=True, relative_remap=True, copy=True)
+			bpy.ops.wm.save_as_mainfile(filepath=version_file, compress=version_compress, relative_remap=True, copy=True)
 		else:
-			# Save current file with new serial number
+			# Save current project with new serial number in the current location
 			project_file = os.path.join(project_path, version_name) + '.blend'
-			bpy.ops.wm.save_as_mainfile(filepath=project_file, relative_remap=True)
+			bpy.ops.wm.save_as_mainfile(filepath=project_file, compress=version_compress)
 			
-			# Move previous project file(s) to version directory
-			old_path = os.path.join(project_path, project_name) + '.blend'
-			new_path = os.path.join(version_path, project_name) + '.blend'
-			os.rename(old_path, new_path)
-			if os.path.isfile(old_path + '1'):
-				os.rename(old_path + '1', new_path + '1')
+			# Move previous project file to the archive location
+			old_path = os.path.join(project_path, project_name)
+			new_path = os.path.join(version_path, project_name)
+			os.rename(old_path + '.blend', new_path + '.blend')
+			
+			# Move or delete backup file
+			if os.path.isfile(old_path + '.blend1'):
+				if version_deletebackup:
+					os.remove(old_path + '.blend1')
+				else:
+					os.rename(old_path + '.blend1', new_path + '.blend1')
+			
+			# Also move autosave render folder (if it exists and uses the same name as the project)
+			if os.path.exists(old_path):
+				os.rename(old_path, new_path)
 		
 		
 		
@@ -156,6 +170,15 @@ class VfSaveProjectVersionPreferences(bpy.types.AddonPreferences):
 	bl_idname = __name__
 	
 	# Version location
+	version_type: bpy.props.EnumProperty(
+		name='Type',
+		description='Version file naming convention',
+		items=[
+			('NUM', 'Number', 'Save versions using autogenerated serial numbers'),
+			('TIME', 'Timestamp', 'Save versions with the current date and time'),
+			('ALPHANUM', 'Alphanumeric', 'Save versions with an incrementing major version number and minor alphabet character')
+			],
+		default='NUM')
 	version_path: bpy.props.StringProperty(
 		name="Path",
 		description="Leave a single forward slash to auto generate folders alongside project files",
@@ -167,23 +190,22 @@ class VfSaveProjectVersionPreferences(bpy.types.AddonPreferences):
 		description="separator between the project name and the version number",
 		default="-",
 		maxlen=16)
-	version_type: bpy.props.EnumProperty(
-		name='Type',
-		description='Version file naming convention',
-		items=[
-			('SERIAL', 'Serial Number', 'Save versions using autogenerated serial numbers'),
-			('DATETIME', 'Date and Time', 'Save versions with the current date and time'),
-			('ALPHANUM', 'Alphanumeric', 'Save versions with an incrementing version number and alphabetical indicator')
-			],
-		default='SERIAL')
-	version_format: bpy.props.IntProperty(
-		name="Digits",
-		description="Number of serial number digits, padded with leading zeroes",
+	version_length: bpy.props.IntProperty(
+		name="Length",
+		description="Total character count, padded with leading zeroes",
 		default=4,
 		soft_min=1,
 		soft_max=8,
 		min=1,
 		max=8)
+	version_compress: bpy.props.BoolProperty(
+		name='Compression',
+		description='Compresses versioned files, or for Alphanumeric, compresses the main project when saving',
+		default=True)
+	version_deletebackup: bpy.props.BoolProperty(
+		name='Delete .blend1 files',
+		description='Keeps the .blend1 backup file alongside the archived project',
+		default=False)
 	version_confirm: bpy.props.BoolProperty(
 		name='Confirmation Popup',
 		description='Confirms successful version saving with a popup panel',
@@ -194,16 +216,19 @@ class VfSaveProjectVersionPreferences(bpy.types.AddonPreferences):
 		layout = self.layout
 		layout.use_property_split = True
 		
+		row = layout.row(align=True)
+		row.prop(self, 'version_type', expand=True)
+		
 		col = layout.column(align=True)
 		col.prop(self, "version_path")
-		
-		col = layout.column(align=True)
-		col.prop(self, "version_separator")
-		col.prop(self, "version_type")
-		if self.version_type != 'DATETIME':
-			col.prop(self, "version_format")
-		
-		col = layout.column(align=True)
+		row = col.row(align=True)
+		row.prop(self, "version_separator")
+		if self.version_type != 'TIME':
+			row.prop(self, "version_length")
+		row = col.row(align=True)
+		row.prop(self, "version_compress")
+		if self.version_type == 'ALPHANUM':
+			row.prop(self, "version_deletebackup")
 		col.prop(self, "version_confirm")
 
 
