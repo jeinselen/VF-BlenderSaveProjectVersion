@@ -1,7 +1,7 @@
 bl_info = {
 	"name": "VF Save Project Version",
 	"author": "John Einselen - Vectorform LLC",
-	"version": (0, 1, 7),
+	"version": (0, 1, 8),
 	"blender": (3, 6, 0),
 	"location": "Top bar > File > Save Version",
 	"description": "Saves a versioned project file to the specified directory",
@@ -191,7 +191,7 @@ class VfSaveProjectVersionPreferences(bpy.types.AddonPreferences):
 		default="-",
 		maxlen=16)
 	version_length: bpy.props.IntProperty(
-		name="Length",
+		name="Characters",
 		description="Total character count, padded with leading zeroes",
 		default=4,
 		soft_min=1,
@@ -214,21 +214,57 @@ class VfSaveProjectVersionPreferences(bpy.types.AddonPreferences):
 	# User Interface
 	def draw(self, context):
 		layout = self.layout
-		layout.use_property_split = True
 		
-		row = layout.row(align=True)
+		# First group
+		col = layout.column(align=True)
+		
+		# Create info strings
+		if self.version_type == 'ALPHANUM':
+			info = 'Saves project with new name, archives previous file'
+			info_file = 'ProjectName' + self.version_separator
+			version_length = format(bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_length - 1, '02')
+			info_file += format(1, version_length) + "b.blend,    " + self.version_path + '...' + format(1, version_length) + 'a.blend'
+		else:
+			info = 'Copies project to archive with '
+			info_file = os.path.join(self.version_path, 'ProjectName') + self.version_separator
+			if self.version_type == 'TIME':
+				info += 'date and time'
+				info_file += 'YYYY-MM-DD-HH-MM-SS'
+			else:
+				info += 'automatic serial number'
+				version_length = format(bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_length, '02')
+				info_file += format(1, version_length)
+			info_file += '.blend'
+		
+		# Display info
+		box = col.box()
+		col = box.column(align=True)
+		col.label(text=info)
+		col.label(text=info_file)
+		
+		# Display version type buttons
+		row = col.row(align=True)
 		row.prop(self, 'version_type', expand=True)
 		
+		# Second group
 		col = layout.column(align=True)
-		col.prop(self, "version_path")
+		
+		# Display path
+		col.prop(self, "version_path", text='')
+		
+		# Display naming options
 		row = col.row(align=True)
-		row.prop(self, "version_separator")
+		row.prop(self, "version_separator", text='')
 		if self.version_type != 'TIME':
 			row.prop(self, "version_length")
+		
+		# Display file options
 		row = col.row(align=True)
 		row.prop(self, "version_compress")
 		if self.version_type == 'ALPHANUM':
 			row.prop(self, "version_deletebackup")
+		
+		# Display popup option
 		col.prop(self, "version_confirm")
 
 

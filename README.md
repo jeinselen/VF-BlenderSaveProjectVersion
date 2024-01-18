@@ -2,7 +2,7 @@
 
 Saves the current Blender project in a subfolder or other directory path with a serial number or date and time using compression and linked asset remapping. Helps keep the root project directory clean even an artist is obsessive about saving progress as separate versions.
 
-![screenshot of the successfully saved new version popup window in the Blender user interface](images/banner.jpg)
+![screenshot of the plugin settings in the Blender preferences window, showing the timestamp option for saving versioned Blender files in an custom archive directory](images/settings.jpg)
 
 
 
@@ -26,6 +26,8 @@ Default keyboard shortcuts are included for MacOS, Linux, and Windows systems:
 
 These can be customised in the Blender Keymap preferences or by right-clicking on the entry at the bottom of the `File` menu.
 
+![screenshot of the successfully saved new version popup window in the Blender user interface](images/banner.jpg)
+
 
 
 
@@ -34,18 +36,23 @@ These can be customised in the Blender Keymap preferences or by right-clicking o
 
 ## Preferences
 
+- `Type ` switches between the available versioning options
+  - `Number` = automatically incrementing version number based on previously saved versions in the specified path, starting at 0000
+  - `Timestamp` = current date and time using YYYY-MM-DD-HH-MM-SS format
+  - `Alphanumeric` = major/minor versioning in number + character format (`001a`, `001b`, `001c` ... `002a` etcetera)
 - `Path` sets the location for versioned files
   - `/` = a folder alongside the project using the project name
   - Relative and absolute paths can also be used, the default is `//_Archive`
-
 - `Separator` allows for custom text between the original project name and the serial number or date and time stamp
-  - The default is simply a dash `-`, which will result in `ProjectName-XXXX`
+  - The default is simply a dash `-`, which will result in `ProjectName-VersionNumber`
+- `Characters` sets the total character count (zero padding) for `Serial Number` and `Alphanumeric` formats (this setting will not show up in the preferences when `Timestamp` is selected)
+- `Compression` enables Blender compression when saving files
+	- For `Number` and `Timestamp` versioning, this controls compression for the archived files (if the active project uses compression, it will be turned off for the archived projects)
+	- For `Alphanumeric` versioning, this controls compression for the *active* project; as versions are saved, everything will end up compressed (both current project and the archived files that were previously saved and then moved to the archive)
 
-- `Type ` switches between the available number options
-  - `Serial Number` = automatically incrementing version number based on previously saved versions in the specified path, starting at 0000
-  - `Date and Time` = current date and time using YYYY-MM-DD-HH-MM-SS format
-  - `Alphanumeric` = major/minor versioning in number + character format (`001a`, `001b`, `001c` ... `002a` etcetera)
-- `Digits` adjusts the zero padding for both `Serial Number` and `Alphanumeric` formats
+- `Delete .blend1 files` when using `Alphanumeric` versioning, `.blend1` files can be immediately deleted from the system instead of being moved to the archive directory along with the standard `.blend` file
+	- When `Number` or  `Timestamp` are selected, any associated `.blend1` file will be left alongside the active project file (this setting will not appear in the preferences)
+
 - `Confirmation Popup` enables a small confirmation panel with the version output path when the script completes (it will always display success in the status bar)
 
 
