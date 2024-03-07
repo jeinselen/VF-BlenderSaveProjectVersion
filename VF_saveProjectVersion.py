@@ -1,7 +1,7 @@
 bl_info = {
 	"name": "VF Save Project Version",
 	"author": "John Einselen - Vectorform LLC",
-	"version": (0, 1, 8),
+	"version": (0, 1, 9),
 	"blender": (3, 6, 0),
 	"location": "Top bar > File > Save Version",
 	"description": "Saves a versioned project file to the specified directory",
@@ -12,11 +12,7 @@ bl_info = {
 import bpy
 import datetime
 import os
-from re import match, findall, split, M as multiline
-#from pathlib import Path
-#import platform
-#from re import findall, search, sub, M as multiline
-#import time
+from re import findall, search, split, M as multiline
 
 ###########################################################################
 # Save new file version
@@ -42,7 +38,14 @@ class VF_OT_SaveProjectVersion(bpy.types.Operator):
 		version_compress = bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_compress
 		version_deletebackup = bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_deletebackup
 		
+		# Define project names
+		project_name = os.path.splitext(os.path.basename(bpy.data.filepath))[0]
 		
+		# Automatically detect existing alphanumeric serialisation
+		if (bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_auto):
+			alphanum = search('(\d+[A-Za-z]{1})$', project_name)
+			if alphanum is not None:
+				version_type = 'ALPHANUM'
 		
 		# Define project paths
 		project_path = os.path.dirname(bpy.data.filepath)
@@ -57,7 +60,7 @@ class VF_OT_SaveProjectVersion(bpy.types.Operator):
 		if len(version_path) <= 1:
 			# Replace one or fewer characters with the project path
 			version_path = os.path.join(os.path.dirname(bpy.data.filepath), project_name)
-			
+		
 		# Convert relative paths into absolute paths for Python compatibility
 		project_path = bpy.path.abspath(project_path)
 		version_path = bpy.path.abspath(version_path)
@@ -65,11 +68,6 @@ class VF_OT_SaveProjectVersion(bpy.types.Operator):
 		# Create version directory if it doesn't exist yet
 		if not os.path.exists(version_path):
 			os.makedirs(version_path)
-		
-		
-		
-		# Define project names
-		project_name = os.path.splitext(os.path.basename(bpy.data.filepath))[0]
 		
 		# Generate file name with numerical identifier
 		if version_type == 'NUM': # Generate dynamic serial number
@@ -81,7 +79,7 @@ class VF_OT_SaveProjectVersion(bpy.types.Operator):
 				highest = -1
 				if files:
 					for f in files:
-						# find filenames that end with four or more digits
+						# find filenames that end with digits
 						suffix = findall(r'\d+$', os.path.splitext(f)[0].split(project_name)[-1], multiline)
 						if suffix:
 							if int(suffix[-1]) > highest:
@@ -98,18 +96,19 @@ class VF_OT_SaveProjectVersion(bpy.types.Operator):
 		
 		# If set to alphanumeric, separate version elements from project name, increment, recombine
 		elif version_type == 'ALPHANUM':
-			project_name_parts = split(r'([0-9]{3})([a-z]{1})$', project_name)
-			# If project is already correctly versioned, increment
+			project_name_parts = split(r'([0-9]{1,})([a-z]{1})$', project_name)
+			# If project is already versioned, increment
 			if len(project_name_parts) > 3:
 				# Increment values (major: "001x" to "002a", minor: "001a" to "001b")
 				if self.increment_major:
 					project_num = format(int(project_name_parts[1]) + 1, version_length)
 					project_chr = "a"
 				else:
-					project_num = project_name_parts[1]
+#					project_num = project_name_parts[1] # This preserve shorter/longer serial number padding if already present
+					project_num = format(int(project_name_parts[1]), version_length)
 					project_chr = str(chr(ord(project_name_parts[2]) + 1))
 				version_name = project_name_parts[0] + project_num + project_chr
-			# If project wasn't versioned, create new version
+			# If project is not yet versioned, create new version
 			else:
 				project_num = format(1, version_length)
 				project_chr = "a"
@@ -210,6 +209,10 @@ class VfSaveProjectVersionPreferences(bpy.types.AddonPreferences):
 		name='Confirmation Popup',
 		description='Confirms successful version saving with a popup panel',
 		default=False)
+	version_auto: bpy.props.BoolProperty(
+		name='Autodetect Alphanumeric',
+		description='Recognises if the current project file already has an alphanumeric serial number, and uses that versioning type automatically',
+		default=True)
 	
 	# User Interface
 	def draw(self, context):
@@ -238,9 +241,9 @@ class VfSaveProjectVersionPreferences(bpy.types.AddonPreferences):
 		
 		# Display info
 		box = col.box()
-		col = box.column(align=True)
-		col.label(text=info)
-		col.label(text=info_file)
+		col2 = box.column(align=True)
+		col2.label(text=info)
+		col2.label(text=info_file)
 		
 		# Display version type buttons
 		row = col.row(align=True)
@@ -266,6 +269,9 @@ class VfSaveProjectVersionPreferences(bpy.types.AddonPreferences):
 		
 		# Display popup option
 		col.prop(self, "version_confirm")
+		
+		# Display automatic detection option
+		col.prop(self, "version_auto")
 
 
 
