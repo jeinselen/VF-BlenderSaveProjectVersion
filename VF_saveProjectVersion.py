@@ -1,7 +1,7 @@
 bl_info = {
 	"name": "VF Save Project Version",
 	"author": "John Einselen - Vectorform LLC",
-	"version": (0, 1, 9),
+	"version": (0, 2, 0),
 	"blender": (3, 6, 0),
 	"location": "Top bar > File > Save Version",
 	"description": "Saves a versioned project file to the specified directory",
@@ -27,9 +27,16 @@ class VF_OT_SaveProjectVersion(bpy.types.Operator):
 	increment_major: bpy.props.BoolProperty(default=False)
 	
 	def invoke(self, context, event):
+		# Define project names
+		project_name = os.path.splitext(os.path.basename(bpy.data.filepath))[0]
+		
 		# Get preferences
 		version_path = bpy.path.abspath(bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_path)
 		version_type = bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_type
+		if (bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_auto):
+			alphanum = search('(\d+[A-Za-z]{1})$', project_name)
+			if alphanum is not None:
+				version_type = 'ALPHANUM'
 		version_separator = bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_separator
 		if version_type == 'ALPHANUM':
 			version_length = format(bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_length - 1, '02')
@@ -37,15 +44,6 @@ class VF_OT_SaveProjectVersion(bpy.types.Operator):
 			version_length = format(bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_length, '02')
 		version_compress = bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_compress
 		version_deletebackup = bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_deletebackup
-		
-		# Define project names
-		project_name = os.path.splitext(os.path.basename(bpy.data.filepath))[0]
-		
-		# Automatically detect existing alphanumeric serialisation
-		if (bpy.context.preferences.addons['VF_saveProjectVersion'].preferences.version_auto):
-			alphanum = search('(\d+[A-Za-z]{1})$', project_name)
-			if alphanum is not None:
-				version_type = 'ALPHANUM'
 		
 		# Define project paths
 		project_path = os.path.dirname(bpy.data.filepath)
